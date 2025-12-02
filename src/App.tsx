@@ -16,13 +16,8 @@ import {
     Mail,
     Calendar,
     Settings,
-    ShoppingCart,
     TrendingUp,
     ClipboardList,
-    CheckCircle2,
-    CalendarClock,
-    AlertTriangle,
-    History,
     Receipt,
     RotateCcw
 } from 'lucide-react'
@@ -31,6 +26,9 @@ import POSWizard from './pages/POSWizard';
 import ActiveLoansManager from "./pages/ActiveLoansManager.tsx";
 import CollectionCalendar from "./pages/CollectionCalendar.tsx";
 import OverdueManager from "./pages/OverdueManager.tsx";
+import OrderHistoryManager from "./pages/OrderHistoryManager.tsx";
+import PaymentsLogManager from "./pages/PaymentsLogManager.tsx";
+import RefundsLogManager from "./pages/RefundsLogManager.tsx";
 
 function App() {
     return (
@@ -187,11 +185,7 @@ function App() {
                         <ProtectedRoute>
                             <PersonaProtectedRoute>
                                 <Layout>
-                                    <PlaceholderPage
-                                        title="Order History"
-                                        description="Review historical orders and transactions."
-                                        icon={History}
-                                    />
+                                    <OrderHistoryManager/>
                                 </Layout>
                             </PersonaProtectedRoute>
                         </ProtectedRoute>
@@ -201,11 +195,7 @@ function App() {
                         <ProtectedRoute>
                             <PersonaProtectedRoute>
                                 <Layout>
-                                    <PlaceholderPage
-                                        title="Payments Log"
-                                        description="Detailed log of received payments."
-                                        icon={Receipt}
-                                    />
+                                    <PaymentsLogManager/>
                                 </Layout>
                             </PersonaProtectedRoute>
                         </ProtectedRoute>
@@ -215,11 +205,7 @@ function App() {
                         <ProtectedRoute>
                             <PersonaProtectedRoute>
                                 <Layout>
-                                    <PlaceholderPage
-                                        title="Refunds"
-                                        description="Manage and review refunds."
-                                        icon={RotateCcw}
-                                    />
+                                    <RefundsLogManager/>
                                 </Layout>
                             </PersonaProtectedRoute>
                         </ProtectedRoute>
