@@ -284,7 +284,7 @@ const SalesListManager: React.FC = () => {
                                         className="hover:bg-blue-50 cursor-pointer transition-colors group"
                                     >
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(sale.sale_date).toLocaleDateString()}
+                                            {new Date(sale.sale_date).toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex flex-col">
@@ -345,7 +345,7 @@ const SalesListManager: React.FC = () => {
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center text-xs text-gray-500 uppercase tracking-wide font-semibold">
                                         <Calendar size={14} className="mr-1" />
-                                        {new Date(sale.sale_date).toLocaleDateString()}
+                                        {new Date(sale.sale_date).toLocaleString()}
                                     </div>
                                     <span className={`px-2 py-1 rounded-md text-xs font-bold capitalize border ${getStatusStyle(sale.status)}`}>
                                         {sale.status.replace('_', ' ')}
