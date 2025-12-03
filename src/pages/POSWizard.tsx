@@ -31,8 +31,8 @@ const POSWizard: React.FC = () => {
   const [downPayment, setDownPayment] = useState<number>(0);
   const [schedule, setSchedule] = useState<CustomScheduleItemInput[]>([]);
 
-  const [orderId, setOrderId] = useState<number | null>(null);
-  const [orderStatus, setOrderStatus] = useState<string | null>(null);
+ /* const [orderId, setOrderId] = useState<number | null>(null);
+  const [orderStatus, setOrderStatus] = useState<string | null>(null);*/
 
   type ReceiptData = {
     orderId: number;
@@ -80,8 +80,8 @@ const POSWizard: React.FC = () => {
     setSaleType('full_payment');
     setDownPayment(0);
     setSchedule([]);
-    setOrderId(null);
-    setOrderStatus(null);
+    // setOrderId(null);
+    // setOrderStatus(null);
   };
 
   return (
@@ -163,24 +163,25 @@ const POSWizard: React.FC = () => {
             total={itemsTotal}
             onResult={(res) => {
               if (res?.new_order_id) {
-                // Snapshot current state for receipt
-                setReceiptData({
-                  orderId: res.new_order_id,
-                  status: res.status || 'success',
-                  customer,
-                  cart,
-                  saleType,
-                  downPayment,
-                  schedule,
-                  total: itemsTotal,
-                });
-                setReceiptOpen(true);
-                // Reset the wizard process
-                resetAll();
-              } else {
-                setOrderId(null);
-                setOrderStatus(null);
+                  // Snapshot current state for receipt
+                  setReceiptData({
+                      orderId: res.new_order_id,
+                      status: res.status || 'success',
+                      customer,
+                      cart,
+                      saleType,
+                      downPayment,
+                      schedule,
+                      total: itemsTotal,
+                  });
+                  setReceiptOpen(true);
+                  // Reset the wizard process
+                  resetAll();
               }
+              // else {
+              //   // setOrderId(null);
+              //   // setOrderStatus(null);
+              // }
             }}
           />
         )}

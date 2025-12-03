@@ -1,31 +1,53 @@
-/**
- * Represents the input parameters for the 'get_dashboard_stats' RPC function.
- * PostgreSQL timestamps should be passed as ISO 8601 strings.
- */
-export interface GetDashboardStatsParams {
-    p_start_date: string;
-    p_end_date: string;
+// types/dashboard.ts
+
+// --- Generic Response Wrapper ---
+export interface ServiceResponse<T> {
+    data: T | null;
+    error: string | null;
 }
 
-/**
- * Represents the JSON return value from the 'get_dashboard_stats' function.
- */
+// --- Enum Types ---
+// Reusing OrderStatus for recent sales list
+export type OrderStatus = 'completed' | 'ongoing' | 'defaulted' | 'refunded' | 'partially_refunded';
+
+// --- Nested Objects ---
+
+export interface RecentSale {
+    id: number;
+    total_amount: number;
+    status: OrderStatus;
+    created_at: string; // ISO 8601 Timestamp
+}
+
+// --- Main Return Object ---
+
 export interface DashboardStats {
-    /** Gross Revenue generated in this period */
-    period_sales: number;
+    /** Gross sales (Completed + Ongoing) in the period */
+    total_sales: number;
 
-    /** Actual money in the drawer for this period (Down payments + Installments) */
-    period_cash_collected: number;
+    /** Actual money received in the period */
+    cash_collected: number;
 
-    /** Money lost in this period via refunds */
-    period_refunds: number;
+    /** Money returned to customers */
+    total_refunds: number;
 
-    /** Installments falling due in this period (Expected collections) */
-    period_installments_due: number;
+    /** Installments scheduled for this period (Forecast) */
+    expected_collections: number;
 
-    /** Global: Total Active Debt (Money owed to store right now) */
-    global_outstanding_debt: number;
+    /** Global active debt across all time */
+    total_outstanding_debt: number;
 
-    /** Global: Count of Overdue Loans (Alerts) */
-    global_overdue_count: number;
+    /** Count of overdue installments or pending items past due date */
+    overdue_count: number;
+
+    /** Top 5 most recent orders */
+    recent_sales: RecentSale[];
+}
+
+// --- Parameter Interface ---
+
+export interface GetDashboardStatsParams {
+    p_account_id: number;
+    p_start_date: string; // ISO String
+    p_end_date: string;   // ISO String
 }

@@ -1,31 +1,42 @@
+// services/dashboardService.ts
 import { supabase } from '../lib/supabase';
-import type { DashboardStats, GetDashboardStatsParams } from '../types/dashboard.ts'; // Assuming types are in a 'types.ts' file
+import type {
+    DashboardStats,
+    GetDashboardStatsParams,
+    ServiceResponse
+} from '../types/dashboard';
 
 export class DashboardService {
+
     /**
-     * Fetches aggregated dashboard statistics for a specific date range.
-     *
-     * @param startDate - The start of the period (Date object or ISO string)
-     * @param endDate - The end of the period (Date object or ISO string)
-     * @returns Promise containing the dashboard statistics object
+     * Fetches aggregated statistics for the dashboard.
+     * Includes revenue, cash flow, debt summary, and recent transactions.
      */
-    static async getStats(startDate: Date | string, endDate: Date | string): Promise<DashboardStats> {
+    static async getStats(params: GetDashboardStatsParams): Promise<ServiceResponse<DashboardStats>> {
+        try {
+            const { data, error } = await supabase.rpc('ins_get_dashboard_stats', {
+                p_account_id: params.p_account_id,
+                p_start_date: params.p_start_date,
+                p_end_date: params.p_end_date
+            });
 
-        // Prepare parameters for the RPC call
-        const params: GetDashboardStatsParams = {
-            p_start_date: typeof startDate === 'string' ? startDate : startDate.toISOString(),
-            p_end_date: typeof endDate === 'string' ? endDate : endDate.toISOString(),
-        };
+            if (error) {
+                return { data: null, error: error.message };
+            }
 
-        const { data, error } = await supabase
-            .rpc('ins_get_dashboard_stats', params);
+            // The function returns a single JSON object, so data is not an array (unless RPC behavior varies, usually single object for json return types)
+            // If Supabase RPC returns it as a single object directly:
+            if (!data) {
+                return { data: null, error: 'Failed to load dashboard statistics.' };
+            }
 
-        if (error) {
-            console.error('Error fetching dashboard stats:', error.message);
-            throw error;
+            return { data: data as DashboardStats, error: null };
+
+        } catch (err: any) {
+            return {
+                data: null,
+                error: err.message || 'An unexpected error occurred while fetching dashboard stats.'
+            };
         }
-
-        // Return data cast to the specific interface
-        return data as DashboardStats;
     }
 }
