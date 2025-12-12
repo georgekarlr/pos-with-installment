@@ -1,4 +1,4 @@
-// services/orderDetailsService.ts
+// services/OrderDetailsService.ts
 import { supabase } from '../lib/supabase';
 import type {
     OrderDetails,
@@ -6,11 +6,13 @@ import type {
     CreatePaymentResult,
     ServiceResponse
 } from '../types/orderDetails';
+import {getCurrentDate} from "../utils/schedule.ts";
 
 export class OrderDetailsService {
 
     /**
-     * Fetches full details for a specific order, including items, payments, and installment schedules.
+     * Fetches full details for a specific order.
+     * Updated to include interest breakdowns, distinct sale dates, and grand totals.
      */
     static async getOrderDetails(orderId: number): Promise<ServiceResponse<OrderDetails>> {
         try {
@@ -38,7 +40,7 @@ export class OrderDetailsService {
 
     /**
      * Creates a payment for an existing order.
-     * If it's an installment order, it applies the waterfall logic to pay off schedule items.
+     * (Included to keep the service class complete for Order Detail Views)
      */
     static async createPayment(params: CreatePaymentParams): Promise<ServiceResponse<CreatePaymentResult>> {
         try {
@@ -48,16 +50,13 @@ export class OrderDetailsService {
                 p_amount_paid: params.p_amount_paid,
                 p_payment_method: params.p_payment_method,
                 p_tendered_amount: params.p_tendered_amount ?? 0,
-                p_created_at: params.p_created_at ?? new Date().toISOString()
+                p_created_at: getCurrentDate()
             });
 
-            console.log('data: ', data);
-            console.log('error: ', error);
             if (error) {
                 return { data: null, error: error.message };
             }
 
-            // Function returns a TABLE, so check array length
             if (!data || data.length === 0) {
                 return { data: null, error: 'Payment failed. No confirmation received.' };
             }

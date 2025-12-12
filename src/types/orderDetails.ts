@@ -15,7 +15,8 @@ export type ScheduleStatus = 'pending' | 'paid' | 'overdue' | 'partial' | 'cance
 
 export interface OrderHeaderInfo {
     id: number;
-    date: string;
+    date: string;       // Business Date (sale_date) - ISO String
+    created_at: string; // System Date - ISO String
     status: OrderStatus;
     sale_type: SaleType;
     notes: string | null;
@@ -30,9 +31,10 @@ export interface CustomerSummary {
 }
 
 export interface FinancialSummary {
-    total_amount: number;
-    total_paid: number;
-    remaining_balance: number;
+    product_total: number;     // Sticker Price (Sum of items)
+    grand_total: number;       // Contract Price (Product + Interest)
+    total_paid: number;        // Dynamic sum of payments
+    remaining_balance: number; // Current outstanding debt
 }
 
 export interface OrderItemDetail {
@@ -61,8 +63,16 @@ export interface InstallmentScheduleItem {
 
 export interface InstallmentDetails {
     plan_name: string | null;
-    total_financed: number;
+
+    // New Interest Fields
+    interest_rate: number;
+    interest_amount: number;
+
+    // Debt Structure
+    down_payment: number;
+    total_financed: number; // (Principal + Interest)
     start_date: string;
+
     schedule: InstallmentScheduleItem[];
 }
 
@@ -76,15 +86,14 @@ export interface OrderDetails {
     installment_details: InstallmentDetails | null;
 }
 
-// --- Parameters & Return for Payment Creation ---
-
+// --- Payment Creation Types (Kept for completeness of the Service) ---
 export interface CreatePaymentParams {
     p_account_id: number;
     p_order_id: number;
     p_amount_paid: number;
     p_payment_method: string;
     p_tendered_amount?: number;
-    p_created_at?: string; // ISO String
+    p_created_at?: string;
 }
 
 export interface CreatePaymentResult {

@@ -1,25 +1,24 @@
-// services/SalesService.ts
+// services/salesService.ts
 import { supabase } from '../lib/supabase';
 import type {
     ProcessSaleParams,
     ProcessSaleResult,
     ServiceResponse
 } from '../types/sales';
+import {getCurrentDate} from "../utils/schedule.ts";
 
 export class SalesService {
 
     /**
      * Processes a new sale (Order).
-     * Handles full payments, installments (via template), or custom schedule installments.
+     * Supports Full Payments and Installments (with interest calculations).
      *
-     * @param params - The sale details including items, payment info, and optional installment config.
+     * @param params - The sale details including items, payment info, interest, schedule, and optional totals override.
      * @returns ServiceResponse containing the new order ID and status.
      */
     static async processSale(params: ProcessSaleParams): Promise<ServiceResponse<ProcessSaleResult>> {
         try {
-            // Prepare the parameters.
-            // Note: Supabase JS client automatically stringifies objects/arrays for JSONB columns,
-            // but explicitly typing the params in the types file ensures structure.
+            // Prepare the parameters mapping strictly to the SQL function arguments
             const rpcParams = {
                 p_account_id: params.p_account_id,
                 p_customer_id: params.p_customer_id,
@@ -28,7 +27,17 @@ export class SalesService {
                 p_payment: params.p_payment,
                 p_installment_plan_id: params.p_installment_plan_id ?? null,
                 p_custom_schedule: params.p_custom_schedule ?? null,
-                p_created_at: params.p_created_at ?? new Date().toISOString()
+
+                // Date handling
+                p_sale_date: getCurrentDate(),
+
+                // Interest Parameters
+                p_interest_rate: params.p_interest_rate ?? 0,
+                p_interest_amount: params.p_interest_amount ?? 0,
+
+                // NEW: Total Overrides (Pass null to let DB calculate)
+                p_total_with_interest: params.p_total_with_interest ?? null,
+                p_total_financed: params.p_total_financed ?? null
             };
 
             const { data, error } = await supabase.rpc('ins_process_sale', rpcParams);
@@ -46,7 +55,6 @@ export class SalesService {
             return { data: data[0] as ProcessSaleResult, error: null };
 
         } catch (err: any) {
-            // Catch client-side or unexpected network errors
             return {
                 data: null,
                 error: err.message || 'An unexpected error occurred while processing the sale.'

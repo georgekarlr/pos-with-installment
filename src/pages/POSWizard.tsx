@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import  React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import Stepper from '../components/pos/Stepper';
@@ -30,6 +30,7 @@ const POSWizard: React.FC = () => {
   const [saleType, setSaleType] = useState<SaleType>('full_payment');
   const [downPayment, setDownPayment] = useState<number>(0);
   const [schedule, setSchedule] = useState<CustomScheduleItemInput[]>([]);
+  const [interestRate, setInterestRate] = useState<number>(0);
 
  /* const [orderId, setOrderId] = useState<number | null>(null);
   const [orderStatus, setOrderStatus] = useState<string | null>(null);*/
@@ -43,6 +44,7 @@ const POSWizard: React.FC = () => {
     downPayment: number;
     schedule: CustomScheduleItemInput[];
     total: number;
+    interestRate?: number;
   };
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
@@ -53,13 +55,14 @@ const POSWizard: React.FC = () => {
 
   const remainingForSchedule = useMemo(() => {
     if (saleType === 'full_payment') return 0;
-    if (saleType === 'installment_with_down') {
-      const base = Math.max(itemsTotal - (downPayment || 0), 0);
-      return Number(base.toFixed(2));
-    }
-    // pure_installment
-    return Number(itemsTotal.toFixed(2));
-  }, [itemsTotal, downPayment, saleType]);
+    // Principal to finance
+    const principal = saleType === 'installment_with_down'
+      ? Math.max(itemsTotal - (downPayment || 0), 0)
+      : Math.max(itemsTotal, 0);
+    const interestAmt = (principal * (interestRate || 0)) / 100;
+    const withInterest = principal + interestAmt;
+    return Number(withInterest.toFixed(2));
+  }, [itemsTotal, downPayment, saleType, interestRate]);
 
   const canNextFromStep = (step: number) => {
     if (step === 0) return !!customer;
@@ -149,6 +152,8 @@ const POSWizard: React.FC = () => {
             setDownPayment={setDownPayment}
             schedule={schedule}
             setSchedule={setSchedule}
+            interestRate={interestRate}
+            setInterestRate={setInterestRate}
           />
         )}
 
@@ -161,6 +166,7 @@ const POSWizard: React.FC = () => {
             downPayment={downPayment}
             schedule={schedule}
             total={itemsTotal}
+            interestRate={interestRate}
             onResult={(res) => {
               if (res?.new_order_id) {
                   // Snapshot current state for receipt
@@ -173,6 +179,7 @@ const POSWizard: React.FC = () => {
                       downPayment,
                       schedule,
                       total: itemsTotal,
+                      interestRate,
                   });
                   setReceiptOpen(true);
                   // Reset the wizard process
@@ -233,6 +240,7 @@ const POSWizard: React.FC = () => {
             downPayment={receiptData.downPayment}
             schedule={receiptData.schedule}
             total={receiptData.total}
+            interestRate={receiptData.interestRate}
           />
         )}
       </Modal>

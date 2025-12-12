@@ -9,8 +9,9 @@ import type {
 export class SalesListService {
 
     /**
-     * Fetches a comprehensive list of sales with calculated financial totals (Paid vs Remaining).
-     * Supports filtering by Search, Sale Type, Status, and Date Range.
+     * Fetches a comprehensive list of sales.
+     * Now includes separate fields for Product Total vs Grand Total (with interest).
+     * Filtering is done based on the Business Date (sale_date).
      */
     static async getSalesList(params: GetSalesListParams = {}): Promise<ServiceResponse<SalesListItem[]>> {
         try {
@@ -24,8 +25,6 @@ export class SalesListService {
                 p_offset: params.p_offset ?? 0
             });
 
-            console.log('data: ', data);
-            console.log('error: ', error);
             if (error) {
                 return { data: null, error: error.message };
             }

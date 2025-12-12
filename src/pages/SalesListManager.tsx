@@ -9,7 +9,8 @@ import {
     Briefcase,
     LayoutList,
     Loader2,
-    XCircle, CreditCard
+    XCircle, CreditCard,
+    RefreshCcw
 } from 'lucide-react';
 
 // --- Types ---
@@ -233,15 +234,62 @@ const SalesListManager: React.FC = () => {
                         onChange={(e) => setEndDate(e.target.value)}
                     />
                 </div>
+
+                {/* Always-Available Refresh */}
+                <div className="lg:ml-auto">
+                    <button
+                        onClick={fetchSalesList}
+                        disabled={loadingList}
+                        className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                            loadingList
+                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                : 'bg-white text-blue-700 hover:bg-blue-50 border-blue-200'
+                        }`}
+                        aria-label="Refresh sales list"
+                        title="Refresh"
+                    >
+                        {loadingList ? (
+                            <>
+                                <Loader2 className="animate-spin mr-2" size={16} />
+                                Refreshing...
+                            </>
+                        ) : (
+                            <>
+                                <RefreshCcw className="mr-2" size={16} />
+                                Refresh
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* --- Main Content --- */}
 
             {/* Error State */}
             {listError && (
-                <div className="p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 flex items-center">
-                    <XCircle className="mr-2" size={20} />
-                    {listError}
+                <div className="p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 flex items-center justify-between">
+                    <div className="flex items-center">
+                        <XCircle className="mr-2" size={20} />
+                        <span className="mr-4">{listError}</span>
+                    </div>
+                    <button
+                        onClick={fetchSalesList}
+                        disabled={loadingList}
+                        className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                            loadingList
+                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                : 'bg-white text-red-700 hover:bg-red-100 border-red-200'
+                        }`}
+                    >
+                        {loadingList ? (
+                            <>
+                                <Loader2 className="animate-spin mr-2" size={16} />
+                                Refreshing...
+                            </>
+                        ) : (
+                            <>Refresh</>
+                        )}
+                    </button>
                 </div>
             )}
 
@@ -301,7 +349,7 @@ const SalesListManager: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                                            {formatCurrency(sale.total_amount)}
+                                            {formatCurrency(sale.grand_total)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                                             {sale.remaining_balance > 0 ? (
@@ -367,8 +415,8 @@ const SalesListManager: React.FC = () => {
 
                                 <div className="flex justify-between items-end border-t border-gray-100 pt-3">
                                     <div>
-                                        <div className="text-xs text-gray-500 mb-0.5 uppercase font-medium">Total</div>
-                                        <div className="font-semibold text-gray-900">{formatCurrency(sale.total_amount)}</div>
+                                        <div className="text-xs text-gray-500 mb-0.5 uppercase font-medium">Contract Price</div>
+                                        <div className="font-semibold text-gray-900">{formatCurrency(sale.grand_total)}</div>
                                     </div>
                                     <div className="text-right">
                                         <div className="text-xs text-gray-500 mb-0.5 uppercase font-medium">Balance</div>

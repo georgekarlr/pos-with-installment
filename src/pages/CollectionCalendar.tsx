@@ -10,7 +10,7 @@ import {
     Filter
 } from 'lucide-react';
 import {CalendarItem} from "../types/calendar.ts";
-import {CalendarService} from "../services/calendarService.tsx";
+import {CalendarService} from "../services/calendarService.ts";
 import CalendarStats from "../components/calendar/CalendarStats.tsx";
 import Modal from "../components/ui/Modal.tsx";
 

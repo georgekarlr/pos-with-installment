@@ -53,7 +53,10 @@ const SaleDetails: React.FC<SaleDetailsProps> = ({ order, onRefresh }) => {
         str.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
     // Calculate Financial Progress
-    const progressPercent = Math.min(100, Math.max(0, (financials.total_paid / financials.total_amount) * 100));
+    const progressPercent = Math.min(
+        100,
+        Math.max(0, (financials.total_paid / financials.grand_total) * 100)
+    );
 
     // --- Style Generators ---
     const getStatusColor = (status: string) => {
@@ -115,8 +118,8 @@ const SaleDetails: React.FC<SaleDetailsProps> = ({ order, onRefresh }) => {
                         <p className="text-2xl font-bold text-green-600">{formatCurrency(financials.total_paid)}</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Total Amount</p>
-                        <p className="text-xl font-semibold text-gray-900">{formatCurrency(financials.total_amount)}</p>
+                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Contract Price</p>
+                        <p className="text-xl font-semibold text-gray-900">{formatCurrency(financials.grand_total)}</p>
                     </div>
                 </div>
 

@@ -9,6 +9,7 @@ import type {
     AdjustStockParams,
     ServiceResponse
 } from '../types/products';
+import {getCurrentDate} from "../utils/schedule.ts";
 
 export class ProductsService {
 
@@ -40,7 +41,7 @@ export class ProductsService {
                 p_price: params.p_price || 0,
                 p_cost_price: params.p_cost_price || 0,
                 p_stock_quantity: params.p_stock_quantity || 0,
-                p_created_at: params.p_created_at || new Date().toISOString()
+                p_created_at: getCurrentDate()
             });
 
             if (error) return { data: null, error: error.message };

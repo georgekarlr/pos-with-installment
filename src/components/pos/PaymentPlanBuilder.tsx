@@ -10,6 +10,9 @@ interface PaymentPlanBuilderProps {
   setDownPayment: (n: number) => void;
   schedule: CustomScheduleItemInput[];
   setSchedule: (s: CustomScheduleItemInput[]) => void;
+  // Interest
+  interestRate: number;
+  setInterestRate: (n: number) => void;
 }
 
 const PaymentPlanBuilder: React.FC<PaymentPlanBuilderProps> = ({
@@ -20,6 +23,8 @@ const PaymentPlanBuilder: React.FC<PaymentPlanBuilderProps> = ({
   setDownPayment,
   schedule,
   setSchedule,
+  interestRate,
+  setInterestRate,
 }) => {
   const [startDate, setStartDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [frequency, setFrequency] = useState<Frequency>('monthly');
@@ -36,6 +41,17 @@ const PaymentPlanBuilder: React.FC<PaymentPlanBuilderProps> = ({
     return Number(total.toFixed(2));
   }, [total, downPayment, saleType]);
 
+  const interestAmount = useMemo(() => {
+    if (saleType === 'full_payment') return 0;
+    const amt = (remaining * (interestRate || 0)) / 100;
+    return Number(amt.toFixed(2));
+  }, [remaining, interestRate, saleType]);
+
+  const scheduleDue = useMemo(() => {
+    if (saleType === 'full_payment') return 0;
+    return Number((remaining + interestAmount).toFixed(2));
+  }, [saleType, remaining, interestAmount]);
+
   useEffect(() => {
     // Reset schedule when sale type changes
     const isInstallment = saleType === 'installment_with_down' || saleType === 'pure_installment';
@@ -49,7 +65,9 @@ const PaymentPlanBuilder: React.FC<PaymentPlanBuilderProps> = ({
   }, [saleType, setSchedule, downPayment, setDownPayment]);
 
   const handleGenerate = () => {
-    const s = generateSchedule(remaining, startDate, {
+    // Now schedule amounts include interest (principal + interest distributed)
+    const totalWithInterest = remaining + interestAmount;
+    const s = generateSchedule(totalWithInterest, startDate, {
       frequency,
       intervalDays,
       count,
@@ -97,17 +115,41 @@ const PaymentPlanBuilder: React.FC<PaymentPlanBuilderProps> = ({
             />
           </div>
           <div className="flex items-end">
-            <div className="text-sm text-gray-700">Remaining for schedule: <span className="font-medium">{ '\u20b1'+ remaining.toFixed(2)}</span></div>
+            <div className="text-sm text-gray-700">Due on schedule (with interest): <span className="font-medium">{ '\u20b1'+ scheduleDue.toFixed(2)}</span></div>
           </div>
         </div>
       )}
 
       {saleType === 'pure_installment' && (
-        <div className="text-sm text-gray-700">Remaining for schedule: <span className="font-medium">{ '\u20b1'+ remaining.toFixed(2)}</span></div>
+        <div className="text-sm text-gray-700">Due on schedule (with interest): <span className="font-medium">{ '\u20b1'+ scheduleDue.toFixed(2)}</span></div>
       )}
 
       {(saleType === 'installment_with_down' || saleType === 'pure_installment') && (
         <div className="space-y-4">
+          {/* Interest settings */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm text-gray-700 mb-1">Interest Rate (%)</label>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                value={interestRate}
+                onChange={(e) => setInterestRate(Math.max(0, parseFloat(e.target.value || '0')))}
+              />
+            </div>
+            <div className="flex items-end">
+              <div className="text-sm text-gray-700">
+                Interest amount: <span className="font-medium">{'\u20b1' + interestAmount.toFixed(2)}</span>
+              </div>
+            </div>
+            <div className="flex items-end">
+              <div className="text-sm text-gray-700">
+                Principal remaining: <span className="font-medium">{'\u20b1' + remaining.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm text-gray-700 mb-1">Start Date</label>
@@ -182,7 +224,7 @@ const PaymentPlanBuilder: React.FC<PaymentPlanBuilderProps> = ({
                     </tr>
                   ))}
                   <tr>
-                    <td className="px-3 py-2 border-t font-semibold" colSpan={2}>Total</td>
+                    <td className="px-3 py-2 border-t font-semibold" colSpan={2}>Total (principal + interest)</td>
                     <td className="px-3 py-2 border-t text-right font-semibold">
                       {'\u20b1' + schedule.reduce((s, it) => s + it.amount, 0).toFixed(2)}
                     </td>

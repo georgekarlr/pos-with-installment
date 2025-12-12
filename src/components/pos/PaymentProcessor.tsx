@@ -12,6 +12,7 @@ interface PaymentProcessorProps {
   downPayment: number;
   schedule: CustomScheduleItemInput[];
   total: number;
+  interestRate: number;
   onResult: (res: ProcessSaleResult | null) => void;
 }
 
@@ -24,6 +25,7 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
   schedule,
   total,
   onResult,
+  interestRate,
 }) => {
   const [deduct, setDeduct] = useState<number>(0);
   const netTotalForFull = useMemo(() => Math.max(total - (deduct || 0), 0), [total, deduct]);
@@ -44,17 +46,52 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
     if (cart.length === 0) return false;
     if (amountNow > 0 && tendered < amountNow) return false;
     if (saleType === 'installment_with_down' || saleType === 'pure_installment') {
-      const remaining = saleType === 'pure_installment' ? total : Math.max(total - (downPayment || 0), 0);
+      const principal = saleType === 'pure_installment' ? Math.max(total, 0) : Math.max(total - (downPayment || 0), 0);
+      const interest = (principal * (interestRate || 0)) / 100;
+      const remaining = principal + interest;
       const sum = schedule.reduce((s, it) => s + it.amount, 0);
       if (Math.round(sum * 100) !== Math.round(remaining * 100)) return false;
     }
     return true;
-  }, [accountId, customer, cart.length, amountNow, tendered, saleType, schedule, total, downPayment]);
+  }, [accountId, customer, cart.length, amountNow, tendered, saleType, schedule, total, downPayment, interestRate]);
 
   // Keep tendered synced with amount due for convenience when it changes
   React.useEffect(() => {
     setTendered(amountNow);
   }, [amountNow, saleType]);
+
+  // Derived values for installments (principal-only schedule + separate interest)
+  const principalFinanced = useMemo(() => {
+    if (saleType === 'pure_installment') return Math.max(total, 0);
+    if (saleType === 'installment_with_down') return Math.max(total - (downPayment || 0), 0);
+    return 0;
+  }, [saleType, total, downPayment]);
+
+  const interestAmount = useMemo(() => {
+    if (saleType === 'full_payment') return 0;
+    const amt = (principalFinanced * (interestRate || 0)) / 100;
+    return Math.round(amt * 100) / 100;
+  }, [principalFinanced, interestRate, saleType]);
+
+  const scheduleTotal = useMemo(() => {
+    return Math.round(schedule.reduce((s, it) => s + it.amount, 0) * 100) / 100;
+  }, [schedule]);
+
+  // New API fields: calculate totals including interest
+  const totalWithInterest = useMemo(() => {
+    if (saleType === 'full_payment') return null;
+    return Math.round((principalFinanced + interestAmount) * 100) / 100;
+  }, [saleType, principalFinanced, interestAmount]);
+
+  const totalFinanced = useMemo(() => {
+    if (saleType === 'full_payment') return null;
+    // The financed total equals the schedule total (principal + interest)
+    // Use schedule sum if provided, else fallback to computed totalWithInterest
+    const sched = scheduleTotal;
+    const computed = totalWithInterest ?? 0;
+    const val = sched > 0 ? sched : computed;
+    return Math.round(val * 100) / 100;
+  }, [saleType, scheduleTotal, totalWithInterest]);
 
   const handleProcess = async () => {
     setError(null);
@@ -87,7 +124,19 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
       p_payment: payment,
       p_installment_plan_id: null,
       p_custom_schedule: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? schedule : null,
-      p_created_at: new Date().toISOString(),
+      // Latest API fields
+      p_sale_date: new Date().toISOString(),
+      p_interest_rate: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? (interestRate || 0) : 0,
+      p_interest_amount: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+        ? interestAmount
+        : 0,
+      // New totals for the sales API
+      p_total_with_interest: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+        ? (totalWithInterest ?? null)
+        : null,
+      p_total_financed: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+        ? (totalFinanced ?? null)
+        : null,
     });
 
     setLoading(false);
@@ -116,6 +165,22 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
             <span className="text-sm text-gray-600">Cart Total</span>
             <span className="text-sm font-semibold">{'\u20b1'}{total.toFixed(2)}</span>
           </div>
+          {(saleType === 'installment_with_down' || saleType === 'pure_installment') && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Principal Financed</span>
+                <span className="text-xs font-medium text-gray-900">{'\u20b1'}{principalFinanced.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Interest ({(interestRate || 0).toFixed(2)}%)</span>
+                <span className="text-xs font-medium text-gray-900">{'\u20b1'}{interestAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Total with Interest</span>
+                <span className="text-sm font-semibold">{'\u20b1'}{(totalWithInterest ?? 0).toFixed(2)}</span>
+              </div>
+            </div>
+          )}
           {saleType === 'full_payment' && (
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -204,11 +269,36 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
           {(saleType === 'installment_with_down' || saleType === 'pure_installment') && (
             <div className="flex justify-between"><span>Installments</span><span className="font-medium">{schedule.length}</span></div>
           )}
+          {(saleType === 'installment_with_down' || saleType === 'pure_installment') && (
+            <>
+              <div className="flex justify-between"><span>Principal Financed</span><span className="font-medium">{'\u20b1'}{principalFinanced.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>Interest Rate</span><span className="font-medium">{(interestRate || 0).toFixed(2)}%</span></div>
+              <div className="flex justify-between"><span>Interest Amount</span><span className="font-medium">{'\u20b1'}{interestAmount.toFixed(2)}</span></div>
+            </>
+          )}
         </div>
         <div className="mt-3 border-t pt-3 flex justify-between font-semibold">
           <span>Total</span>
           <span>{'\u20b1'+ total.toFixed(2)}</span>
         </div>
+        {(saleType === 'installment_with_down' || saleType === 'pure_installment') && (
+          <div className="mt-1 flex justify-between text-sm">
+            <span>Grand Total (principal + interest)</span>
+            <span className="font-semibold">{'\u20b1'}{(principalFinanced + interestAmount).toFixed(2)}</span>
+          </div>
+        )}
+        {(saleType === 'installment_with_down' || saleType === 'pure_installment') && (
+          <>
+            <div className="mt-1 flex justify-between text-sm">
+              <span>Total on Schedule</span>
+              <span className="font-semibold">{'\u20b1'}{scheduleTotal.toFixed(2)}</span>
+            </div>
+            <div className="mt-1 flex justify-between text-sm">
+              <span>Final Total (Down + Schedule)</span>
+              <span className="font-semibold">{'\u20b1'}{((downPayment || 0) + scheduleTotal).toFixed(2)}</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

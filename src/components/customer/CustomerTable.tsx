@@ -48,7 +48,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
                                 <p className="text-xs text-gray-500">ID: {customer.id}</p>
                             </div>
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                ${customer.credit_limit.toLocaleString()}
+                                {'\u20b1'+customer.credit_limit.toLocaleString()}
                             </span>
                         </div>
 
@@ -131,7 +131,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({
                                 </div>
                             </td>
                             <td className="px-6 py-4 text-emerald-600 font-medium align-top">
-                                ${customer.credit_limit.toLocaleString()}
+                                {'\u20b1'+customer.credit_limit.toLocaleString()}
                             </td>
                             <td className="px-6 py-4 text-right align-top">
                                 <div className="flex justify-end gap-2">

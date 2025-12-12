@@ -12,9 +12,22 @@ interface ReceiptViewProps {
   downPayment: number;
   schedule: CustomScheduleItemInput[];
   total: number;
+  interestRate?: number;
 }
 
-const ReceiptView: React.FC<ReceiptViewProps> = ({ orderId, status, customer, cart, saleType, downPayment, schedule, total }) => {
+const ReceiptView: React.FC<ReceiptViewProps> = ({ orderId, status, customer, cart, saleType, downPayment, schedule, total, interestRate = 0 }) => {
+  const principalFinanced = React.useMemo(() => {
+    if (saleType === 'pure_installment') return Math.max(total, 0);
+    if (saleType === 'installment_with_down') return Math.max(total - (downPayment || 0), 0);
+    return 0;
+  }, [saleType, total, downPayment]);
+
+  const interestAmount = React.useMemo(() => {
+    if (saleType === 'full_payment') return 0;
+    const amt = (principalFinanced * (interestRate || 0)) / 100;
+    return Math.round(amt * 100) / 100;
+  }, [principalFinanced, interestRate, saleType]);
+
   return (
     <div className="border border-gray-200 rounded-lg p-4 bg-white print:w-full print:border-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -46,7 +59,7 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({ orderId, status, customer, ca
           {saleType === 'installment_with_down' && (
             <div className="flex justify-between"><span>Down Payment</span><span className="font-medium">{'\u20b1'+(downPayment || 0).toFixed(2)}</span></div>
           )}
-          <div className="flex justify-between font-semibold mt-2"><span>Total</span><span>{'\u20b1' + total.toFixed(2)}</span></div>
+          <div className="flex justify-between font-semibold mt-2"><span>Cart Total</span><span>{'\u20b1' + total.toFixed(2)}</span></div>
         </div>
       </div>
 
@@ -72,13 +85,29 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({ orderId, status, customer, ca
                 </tr>
               ))}
               <tr>
-                <td className="px-3 py-2 border-t font-semibold" colSpan={3}>Grand Total</td>
+                <td className="px-3 py-2 border-t font-semibold" colSpan={3}>Subtotal</td>
                 <td className="px-3 py-2 border-t text-right font-semibold">{'\u20b1'+ total.toFixed(2)}</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
+
+      {(saleType === 'installment_with_down' || saleType === 'pure_installment') && (
+        <div className="mt-4">
+          <h4 className="font-medium text-gray-900">Installment Summary</h4>
+          <div className="mt-2 text-sm space-y-1">
+            <div className="flex justify-between"><span>Principal Financed</span><span className="font-medium">{'\u20b1' + principalFinanced.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Interest Rate</span><span className="font-medium">{(interestRate || 0).toFixed(2)}%</span></div>
+            <div className="flex justify-between"><span>Interest Amount</span><span className="font-medium">{'\u20b1' + interestAmount.toFixed(2)}</span></div>
+            <div className="flex justify-between font-semibold border-t pt-2"><span>Grand Total</span><span>{'\u20b1' + (principalFinanced + interestAmount).toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>Total on Schedule</span><span className="font-medium">{'\u20b1' + schedule.reduce((s, it) => s + it.amount, 0).toFixed(2)}</span></div>
+            {saleType === 'installment_with_down' && (
+              <div className="flex justify-between"><span>Final Total (Down + Schedule)</span><span className="font-semibold">{'\u20b1' + ((downPayment || 0) + schedule.reduce((s, it) => s + it.amount, 0)).toFixed(2)}</span></div>
+            )}
+          </div>
+        </div>
+      )}
 
       {(saleType === 'installment_with_down' || saleType === 'pure_installment') && schedule.length > 0 && (
         <div className="mt-6">
@@ -101,7 +130,7 @@ const ReceiptView: React.FC<ReceiptViewProps> = ({ orderId, status, customer, ca
                   </tr>
                 ))}
                 <tr>
-                  <td className="px-3 py-2 border-t font-semibold" colSpan={2}>Total</td>
+                  <td className="px-3 py-2 border-t font-semibold" colSpan={2}>Total (principal + interest)</td>
                   <td className="px-3 py-2 border-t text-right font-semibold">
                     {'\u20b1' + schedule.reduce((s, it) => s + it.amount, 0).toFixed(2)}
                   </td>
