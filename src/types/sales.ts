@@ -62,3 +62,18 @@ export interface ProcessSaleResult {
     new_order_id: number;
     status: string;
 }
+
+export interface ProcessSaleWithNewCustomerParams extends Omit<ProcessSaleParams, 'p_customer_id'> {
+    p_customer_name: string;
+    p_customer_phone?: string | null;
+    p_customer_email?: string | null;
+    p_customer_identity_card?: string | null;
+    p_customer_address?: string | null;
+    p_customer_credit_limit?: number;
+}
+
+export interface ProcessSaleWithNewCustomerResult {
+    new_customer_id: number;
+    new_order_id: number;
+    status: string;
+}

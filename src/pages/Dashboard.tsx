@@ -69,10 +69,10 @@ const Dashboard: React.FC = () => {
             p_end_date: endDate
         });
 
+        if (data) setStats(data);
         if (error) {
-            setError(error);
+            setError(!navigator.onLine ? "Offline mode: showing cached or default data." : error);
         } else {
-            setStats(data);
             setError(null);
         }
         setLoading(false);

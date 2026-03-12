@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import type { Customer } from '../../types/customer';
 import type { CustomScheduleItemInput, PaymentDetailsInput, ProcessSaleResult, SaleType } from '../../types/sales';
 import { SalesService } from '../../services/salesService';
+import { OfflineSyncService } from '../../services/offlineSyncService';
 import type { CartItem } from '../../pages/POSWizard';
 
 interface PaymentProcessorProps {
@@ -116,28 +117,154 @@ const PaymentProcessor: React.FC<PaymentProcessorProps> = ({
       net_amount: saleType === 'full_payment' ? Math.round(netTotalForFull * 100) / 100 : undefined,*/
     };
 
-    const { data, error } = await SalesService.processSale({
-      p_account_id: accountId,
-      p_customer_id: customer.id,
-      p_sale_type: saleType,
-      p_items,
-      p_payment: payment,
-      p_installment_plan_id: null,
-      p_custom_schedule: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? schedule : null,
-      // Latest API fields
-      p_sale_date: new Date().toISOString(),
-      p_interest_rate: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? (interestRate || 0) : 0,
-      p_interest_amount: (saleType === 'installment_with_down' || saleType === 'pure_installment')
-        ? interestAmount
-        : 0,
-      // New totals for the sales API
-      p_total_with_interest: (saleType === 'installment_with_down' || saleType === 'pure_installment')
-        ? (totalWithInterest ?? null)
-        : null,
-      p_total_financed: (saleType === 'installment_with_down' || saleType === 'pure_installment')
-        ? (totalFinanced ?? null)
-        : null,
-    });
+    let data: any, error: string | null = null;
+
+    const performOfflineFallback = async () => {
+      const metadata = {
+        totalWithInterest: totalWithInterest ?? undefined,
+        downPayment: payment.amount > 0 ? payment.amount : undefined,
+        interestRate: interestRate ?? undefined,
+        financedAmount: totalFinanced ?? undefined,
+        customerName: customer.full_name,
+        items: cart.map(item => ({
+          name: item.product.name,
+          price: item.product.price,
+          quantity: item.quantity
+        })),
+      };
+
+      if (customer.id === 0) {
+        await OfflineSyncService.saveOfflineSale({
+          type: 'new_customer',
+          timestamp: Date.now(),
+          metadata,
+          params: {
+            p_account_id: accountId,
+            p_customer_name: customer.full_name,
+            p_customer_phone: customer.phone,
+            p_customer_email: customer.email,
+            p_customer_identity_card: customer.identity_card_no,
+            p_customer_address: customer.address,
+            p_customer_credit_limit: customer.credit_limit,
+            p_sale_type: saleType,
+            p_items,
+            p_payment: payment,
+            p_installment_plan_id: null,
+            p_custom_schedule: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? schedule : null,
+            p_sale_date: new Date().toISOString(),
+            p_interest_rate: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? (interestRate || 0) : 0,
+            p_interest_amount: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+              ? interestAmount
+              : 0,
+            p_total_with_interest: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+              ? (totalWithInterest ?? null)
+              : null,
+            p_total_financed: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+              ? (totalFinanced ?? null)
+              : null,
+          }
+        });
+      } else {
+        await OfflineSyncService.saveOfflineSale({
+          type: 'existing_customer',
+          timestamp: Date.now(),
+          metadata,
+          params: {
+            p_account_id: accountId,
+            p_customer_id: customer.id,
+            p_sale_type: saleType,
+            p_items,
+            p_payment: payment,
+            p_installment_plan_id: null,
+            p_custom_schedule: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? schedule : null,
+            p_sale_date: new Date().toISOString(),
+            p_interest_rate: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? (interestRate || 0) : 0,
+            p_interest_amount: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+              ? interestAmount
+              : 0,
+            p_total_with_interest: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+              ? (totalWithInterest ?? null)
+              : null,
+            p_total_financed: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+              ? (totalFinanced ?? null)
+              : null,
+          }
+        });
+      }
+      return { new_order_id: -1, status: 'offline' };
+    };
+
+    if (!navigator.onLine) {
+      data = await performOfflineFallback();
+    } else {
+      if (customer.id === 0) {
+        // New Customer
+        const res = await SalesService.processSaleWithNewCustomer({
+          p_account_id: accountId,
+          p_customer_name: customer.full_name,
+          p_customer_phone: customer.phone,
+          p_customer_email: customer.email,
+          p_customer_identity_card: customer.identity_card_no,
+          p_customer_address: customer.address,
+          p_customer_credit_limit: customer.credit_limit,
+          p_sale_type: saleType,
+          p_items,
+          p_payment: payment,
+          p_installment_plan_id: null,
+          p_custom_schedule: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? schedule : null,
+          p_sale_date: new Date().toISOString(),
+          p_interest_rate: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? (interestRate || 0) : 0,
+          p_interest_amount: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+            ? interestAmount
+            : 0,
+          p_total_with_interest: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+            ? (totalWithInterest ?? null)
+            : null,
+          p_total_financed: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+            ? (totalFinanced ?? null)
+            : null,
+        });
+        
+        if (res.error && res.error.includes('Failed to fetch')) {
+          data = await performOfflineFallback();
+        } else {
+          data = res.data;
+          error = res.error;
+          if (data && data.new_customer_id) {
+              customer.id = data.new_customer_id;
+          }
+        }
+      } else {
+        // Existing Customer
+        const res = await SalesService.processSale({
+          p_account_id: accountId,
+          p_customer_id: customer.id,
+          p_sale_type: saleType,
+          p_items,
+          p_payment: payment,
+          p_installment_plan_id: null,
+          p_custom_schedule: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? schedule : null,
+          p_sale_date: new Date().toISOString(),
+          p_interest_rate: (saleType === 'installment_with_down' || saleType === 'pure_installment') ? (interestRate || 0) : 0,
+          p_interest_amount: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+            ? interestAmount
+            : 0,
+          p_total_with_interest: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+            ? (totalWithInterest ?? null)
+            : null,
+          p_total_financed: (saleType === 'installment_with_down' || saleType === 'pure_installment')
+            ? (totalFinanced ?? null)
+            : null,
+        });
+        
+        if (res.error && res.error.includes('Failed to fetch')) {
+          data = await performOfflineFallback();
+        } else {
+          data = res.data;
+          error = res.error;
+        }
+      }
+    }
 
     setLoading(false);
     if (error) {

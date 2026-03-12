@@ -14,6 +14,22 @@ import {getCurrentDate} from "../utils/schedule.ts";
 export class ProductsService {
 
     static async getProducts(params: GetProductsParams = {}): Promise<ServiceResponse<Product[]>> {
+        if (!navigator.onLine) {
+            const cached = localStorage.getItem('ins_products_cache');
+            if (cached) {
+                let products: Product[] = JSON.parse(cached);
+                const term = (params.p_search_term || '').toLowerCase();
+                if (term) {
+                    products = products.filter(p => p.name.toLowerCase().includes(term) || (p.sku || '').toLowerCase().includes(term));
+                }
+                const offset = params.p_offset || 0;
+                const limit = params.p_limit || 50;
+                products = products.slice(offset, offset + limit);
+                return { data: products, error: null };
+            }
+            return { data: [], error: 'Offline and no cached data available.' };
+        }
+
         try {
             const { data, error } = await supabase.rpc('ins_get_products', {
                 p_search_term: params.p_search_term || '',
@@ -22,8 +38,34 @@ export class ProductsService {
             });
 
             if (error) return { data: null, error: error.message };
+            
+            if (data && data.length > 0) {
+                try {
+                    const cached = localStorage.getItem('ins_products_cache');
+                    const productsCache: Product[] = cached ? JSON.parse(cached) : [];
+                    const newProducts = data as Product[];
+                    const cacheMap = new Map(productsCache.map(p => [p.id, p]));
+                    newProducts.forEach(p => cacheMap.set(p.id, p));
+                    localStorage.setItem('ins_products_cache', JSON.stringify(Array.from(cacheMap.values())));
+                } catch (e) {
+                    console.error('Error caching products', e);
+                }
+            }
+
             return { data: data as Product[], error: null };
         } catch (err: any) {
+            const cached = localStorage.getItem('ins_products_cache');
+            if (cached) {
+                let products: Product[] = JSON.parse(cached);
+                const term = (params.p_search_term || '').toLowerCase();
+                if (term) {
+                    products = products.filter(p => p.name.toLowerCase().includes(term) || (p.sku || '').toLowerCase().includes(term));
+                }
+                const offset = params.p_offset || 0;
+                const limit = params.p_limit || 50;
+                products = products.slice(offset, offset + limit);
+                return { data: products, error: null };
+            }
             return { data: null, error: err.message || 'An unexpected error occurred' };
         }
     }

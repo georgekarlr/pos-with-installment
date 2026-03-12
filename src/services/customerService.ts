@@ -14,6 +14,26 @@ export class CustomersService {
      * Search and retrieve customers with pagination.
      */
     static async getCustomers(params: GetCustomersParams = {}): Promise<{ data: Customer[]; error: string | null }> {
+        if (!navigator.onLine) {
+            const cached = localStorage.getItem('ins_customers_cache');
+            if (cached) {
+                let customers: Customer[] = JSON.parse(cached);
+                const term = (params.p_search_term || '').toLowerCase();
+                if (term) {
+                    customers = customers.filter(c => 
+                        c.full_name.toLowerCase().includes(term) || 
+                        (c.phone || '').toLowerCase().includes(term) || 
+                        (c.email || '').toLowerCase().includes(term)
+                    );
+                }
+                const offset = params.p_offset || 0;
+                const limit = params.p_limit || 20;
+                customers = customers.slice(offset, offset + limit);
+                return { data: customers, error: null };
+            }
+            return { data: [], error: 'Offline and no cached data available.' };
+        }
+
         try {
             const { data, error } = await supabase
                 .rpc('ins_get_customers', {
@@ -24,8 +44,37 @@ export class CustomersService {
 
             if (error) return { data: [], error: error.message };
 
+            if (data && data.length > 0) {
+                try {
+                    const cached = localStorage.getItem('ins_customers_cache');
+                    const cacheList: Customer[] = cached ? JSON.parse(cached) : [];
+                    const newItems = data as Customer[];
+                    const cacheMap = new Map(cacheList.map(c => [c.id, c]));
+                    newItems.forEach(c => cacheMap.set(c.id, c));
+                    localStorage.setItem('ins_customers_cache', JSON.stringify(Array.from(cacheMap.values())));
+                } catch (e) {
+                    console.error('Error caching customers', e);
+                }
+            }
+
             return { data: (data as Customer[]) ?? [], error: null };
         } catch (e: any) {
+            const cached = localStorage.getItem('ins_customers_cache');
+            if (cached) {
+                let customers: Customer[] = JSON.parse(cached);
+                const term = (params.p_search_term || '').toLowerCase();
+                if (term) {
+                    customers = customers.filter(c => 
+                        c.full_name.toLowerCase().includes(term) || 
+                        (c.phone || '').toLowerCase().includes(term) || 
+                        (c.email || '').toLowerCase().includes(term)
+                    );
+                }
+                const offset = params.p_offset || 0;
+                const limit = params.p_limit || 20;
+                customers = customers.slice(offset, offset + limit);
+                return { data: customers, error: null };
+            }
             return { data: [], error: e?.message || 'Failed to fetch customers' };
         }
     }

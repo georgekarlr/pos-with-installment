@@ -71,11 +71,9 @@ const DashboardManager: React.FC = () => {
             p_end_date: end
         });
 
-        if (error) setError("Could not load dashboard data.");
-        else {
-            setStats(data);
-            setError(null);
-        }
+        if (data) setStats(data);
+        if (error) setError(!navigator.onLine ? "Offline mode: showing cached or default data." : "Could not load dashboard data.");
+        else setError(null);
         setLoading(false);
     }, [accountId, timeRange]);
 
