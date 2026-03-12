@@ -11,7 +11,7 @@ import PaymentProcessor from '../components/pos/PaymentProcessor';
 import ReceiptView from '../components/pos/ReceiptView';
 import OfflineSalesModal from '../components/pos/OfflineSalesModal';
 import Modal from '../components/ui/Modal';
-import { CheckCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import type { Customer } from '../types/customer';
 import type { Product } from '../types/products';
 import type { CustomScheduleItemInput, SaleType } from '../types/sales';
@@ -131,10 +131,10 @@ const POSWizard: React.FC = () => {
 
   return (
     <div className="w-full mx-auto max-w-7xl p-4 sm:p-6">
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-gray-200 pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Installment Process</h1>
-          <p className="text-gray-500">Process sales with optional installments and down payments.</p>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Installment Process</h1>
+          <p className="mt-2 text-lg text-gray-500">Manage sales, installments, and down payments in one place.</p>
         </div>
         {(isOffline || offlineCount > 0) && (
           <div className="flex items-center space-x-3">
@@ -168,19 +168,21 @@ const POSWizard: React.FC = () => {
         )}
       </div>
 
-      <Stepper
-        steps={[
-          'Select Customer',
-          'Select Products',
-          'Payment Plan',
-          'Process & Receipt',
-        ]}
-        activeIndex={activeStep}
-        onStepClick={(i) => setActiveStep(i)}
-      />
+      <div className="mt-10">
+        <Stepper
+          steps={[
+            'Select Customer',
+            'Select Products',
+            'Payment Plan',
+            'Process & Receipt',
+          ]}
+          activeIndex={activeStep}
+          onStepClick={(i) => setActiveStep(i)}
+        />
+      </div>
 
       {/* Step content */}
-      <div className="mt-6">
+      <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6 min-h-[400px]">
         {activeStep === 0 && (
           <CustomerSelector
             selected={customer}
@@ -189,7 +191,7 @@ const POSWizard: React.FC = () => {
         )}
 
         {activeStep === 1 && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <ProductPicker
                 onAdd={(p) => {
@@ -241,7 +243,7 @@ const POSWizard: React.FC = () => {
             schedule={schedule}
             total={itemsTotal}
             interestRate={interestRate}
-            onResult={(res) => {
+            onResult={async (res) => {
               if (res?.new_order_id) {
                   // Snapshot current state for receipt
                   setReceiptData({
@@ -258,7 +260,7 @@ const POSWizard: React.FC = () => {
                   setReceiptOpen(true);
                   // Update offline count if we saved offline
                   if (res.status === 'offline') {
-                    setOfflineCount(OfflineSyncService.getOfflineCount());
+                    setOfflineCount(await OfflineSyncService.getOfflineCount());
                   }
                   // Reset the wizard process
                   resetAll();
@@ -273,31 +275,34 @@ const POSWizard: React.FC = () => {
       </div>
 
       {/* Navigation */}
-      <div className="mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-between">
+      <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-8">
         <button
-          className="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-800 disabled:opacity-50"
+          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           onClick={() => setActiveStep((s) => Math.max(0, s - 1))}
           disabled={activeStep === 0}
         >
+          <ChevronLeft className="mr-2 h-4 w-4" />
           Back
         </button>
-        <div className="flex gap-3 sm:gap-4">
+        
+        <div className="flex items-center gap-3">
           <button
-            className="px-4 py-2 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-800"
+            className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-red-600 bg-white border border-red-200 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
             onClick={resetAll}
           >
+            <RotateCcw className="mr-2 h-4 w-4" />
             Reset
           </button>
-          {activeStep < 3 ? (
+          
+          {activeStep < 3 && (
             <button
-              className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+              className="inline-flex items-center px-6 py-2 text-sm font-medium rounded-md text-white bg-blue-600 border border-transparent hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
               onClick={() => setActiveStep((s) => Math.min(3, s + 1))}
               disabled={!canNextFromStep(activeStep)}
             >
               Next
+              <ChevronRight className="ml-2 h-4 w-4" />
             </button>
-          ) : (
-            <></>
           )}
         </div>
       </div>
