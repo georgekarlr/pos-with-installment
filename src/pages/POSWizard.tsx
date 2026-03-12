@@ -1,6 +1,7 @@
-import  React, { useMemo, useState } from 'react';
+import  React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { OfflineSyncService, OfflineSale } from '../services/offlineSyncService';
 import Stepper from '../components/pos/Stepper';
 import CustomerSelector from '../components/pos/CustomerSelector';
 import ProductPicker from '../components/pos/ProductPicker';
@@ -8,7 +9,9 @@ import CartSummary from '../components/pos/CartSummary';
 import PaymentPlanBuilder from '../components/pos/PaymentPlanBuilder';
 import PaymentProcessor from '../components/pos/PaymentProcessor';
 import ReceiptView from '../components/pos/ReceiptView';
+import OfflineSalesModal from '../components/pos/OfflineSalesModal';
 import Modal from '../components/ui/Modal';
+import { CheckCircle, AlertCircle } from 'lucide-react';
 import type { Customer } from '../types/customer';
 import type { Product } from '../types/products';
 import type { CustomScheduleItemInput, SaleType } from '../types/sales';
@@ -48,6 +51,45 @@ const POSWizard: React.FC = () => {
   };
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [offlineCount, setOfflineCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [viewOfflineOpen, setViewOfflineOpen] = useState(false);
+  const [offlineSalesList, setOfflineSalesList] = useState<(OfflineSale & { key: number })[]>([]);
+  const [syncResult, setSyncResult] = useState<{ success: number; failed: number } | null>(null);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    const fetchCount = () => OfflineSyncService.getOfflineCount().then(setOfflineCount);
+    
+    fetchCount();
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('offline-sales-updated', fetchCount);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('offline-sales-updated', fetchCount);
+    };
+  }, []);
+
+  const handleSync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const result = await OfflineSyncService.syncOfflineSales();
+      if (result.success > 0 || result.failed > 0) {
+        setSyncResult(result);
+      }
+    } finally {
+      OfflineSyncService.getOfflineCount().then(setOfflineCount);
+      setSyncing(false);
+    }
+  };
 
   const itemsTotal = useMemo(() => {
     return cart.reduce((sum, ci) => sum + ci.product.price * ci.quantity, 0);
@@ -89,9 +131,41 @@ const POSWizard: React.FC = () => {
 
   return (
     <div className="w-full mx-auto max-w-7xl p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Point of Sale</h1>
-        <p className="text-gray-500">Process sales with optional installments and down payments.</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Installment Process</h1>
+          <p className="text-gray-500">Process sales with optional installments and down payments.</p>
+        </div>
+        {(isOffline || offlineCount > 0) && (
+          <div className="flex items-center space-x-3">
+            {isOffline && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                Offline Mode
+              </span>
+            )}
+            {offlineCount > 0 && (
+              <>
+                <button
+                  onClick={async () => {
+                    const sales = await OfflineSyncService.getOfflineSales();
+                    setOfflineSalesList(sales);
+                    setViewOfflineOpen(true);
+                  }}
+                  className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  View
+                </button>
+                <button
+                  onClick={handleSync}
+                  disabled={isOffline || syncing}
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {syncing ? 'Syncing...' : `Sync ${offlineCount} Pending`}
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <Stepper
@@ -182,6 +256,10 @@ const POSWizard: React.FC = () => {
                       interestRate,
                   });
                   setReceiptOpen(true);
+                  // Update offline count if we saved offline
+                  if (res.status === 'offline') {
+                    setOfflineCount(OfflineSyncService.getOfflineCount());
+                  }
                   // Reset the wizard process
                   resetAll();
               }
@@ -224,6 +302,13 @@ const POSWizard: React.FC = () => {
         </div>
       </div>
 
+      {/* Offline Sales Modal */}
+      <OfflineSalesModal
+        isOpen={viewOfflineOpen}
+        onClose={() => setViewOfflineOpen(false)}
+        salesList={offlineSalesList}
+      />
+
       {/* Receipt Modal after success */}
       <Modal
         isOpen={receiptOpen && !!receiptData}
@@ -242,6 +327,44 @@ const POSWizard: React.FC = () => {
             total={receiptData.total}
             interestRate={receiptData.interestRate}
           />
+        )}
+      </Modal>
+
+      {/* Sync Result Modal */}
+      <Modal
+        isOpen={!!syncResult}
+        onClose={() => setSyncResult(null)}
+        title="Sync Results"
+      >
+        {syncResult && (
+          <div className="p-4 space-y-4 text-center">
+            {syncResult.failed === 0 ? (
+              <div className="flex flex-col items-center gap-2">
+                <CheckCircle className="w-12 h-12 text-green-500" />
+                <h3 className="text-lg font-medium text-gray-900">Sync Successful</h3>
+                <p className="text-sm text-gray-500">
+                  Successfully synced {syncResult.success} {syncResult.success === 1 ? 'sale' : 'sales'}.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <AlertCircle className="w-12 h-12 text-amber-500" />
+                <h3 className="text-lg font-medium text-gray-900">Sync Completed with Errors</h3>
+                <p className="text-sm text-gray-500">
+                  Successfully synced {syncResult.success} {syncResult.success === 1 ? 'sale' : 'sales'}.<br/>
+                  Failed to sync {syncResult.failed} {syncResult.failed === 1 ? 'sale' : 'sales'}.
+                </p>
+              </div>
+            )}
+            <div className="mt-6 flex justify-center">
+              <button
+                onClick={() => setSyncResult(null)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
     </div>

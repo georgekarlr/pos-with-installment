@@ -33,7 +33,7 @@ type NavItem = {
 
 const adminNavigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'POS', href: '/pos', icon: ShoppingCart },
+  { name: 'Wizard', href: '/wizard', icon: ShoppingCart },
   { name: 'Sales', href: '/sales', icon: TrendingUp },
   {
     name: 'Management',
@@ -64,7 +64,7 @@ const adminNavigation: NavItem[] = [
 
 const staffNavigation: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'POS', href: '/pos', icon: ShoppingCart },
+  { name: 'Wizard', href: '/wizard', icon: ShoppingCart },
   { name: 'Sales', href: '/sales', icon: TrendingUp },
   {
     name: 'Management',

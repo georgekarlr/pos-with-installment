@@ -9,7 +9,7 @@ import {
     Calendar
 } from 'lucide-react';
 import {OverduePayment} from "../types/overdue.ts";
-import {OverduePaymentsService} from "../services/overduePaymentsService.tsx";
+import {OverduePaymentsService} from "../services/overduePaymentsService.ts";
 import Modal from "../components/ui/Modal.tsx";
 import OverdueDetails from "../components/overdue/OverdueDetails.tsx";
 

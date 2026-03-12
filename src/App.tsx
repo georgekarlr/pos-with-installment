@@ -72,7 +72,7 @@ function App() {
                     } />
 
                     {/* New navigation routes */}
-                    <Route path="/pos" element={
+                    <Route path="/wizard" element={
                         <ProtectedRoute>
                             <PersonaProtectedRoute>
                                 <Layout>
